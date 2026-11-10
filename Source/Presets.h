@@ -50,6 +50,14 @@ inline const std::vector<Preset>& presets()
         {"cutoff",2400},{"reso",0.1f},{"keytrack",0.5f},{"aa",0.15f},{"as",1},{"ar",0.6f},
         {"chorus",2},{"chomix",0.6f},{"spread",0.4f} } },
 
+    // ------------------------------------------------------------------ Tirados de discos
+    // Ajustado por medida (espectro, abertura estereo e oscilacao de altura) sobre um trecho
+    // de 1,2 s de "New Europeans". E o ponto mais proximo que a medida achou, nao uma copia.
+    { "Ultravox New Europeans (aprox.)", "Tirados de discos",
+      { {"o2wave",0},{"o2semi",12},{"mix2",0.6f},{"unison",2},{"detune",9},{"spread",0.6f},{"fmode",1},
+        {"cutoff",2000},{"reso",0.05f},{"hpf",120},{"keytrack",0.3f},{"aa",0.2f},{"as",1},{"ar",0.9f},
+        {"chorus",3},{"chomix",0.5f} } },
+
     // ------------------------------------------------------------------ Roland Juno
     { "Juno Pad", "Roland Juno",
       { {"o1wave",1},{"pwm",0.6f},{"lforate",0.4f},{"sub",0.5f},{"cutoff",1800},{"reso",0.15f},{"envamt",0.25f},

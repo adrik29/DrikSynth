@@ -110,7 +110,15 @@ public:
 
     /** Aplica um preset da biblioteca (indice em drik::presets()). */
     void applyPreset (int index);
-    int getCurrentPreset() const   { return currentPreset.load(); }
+
+    /** Presets do usuario: um arquivo por som, em Documentos/DrikSynth/Presets. */
+    static juce::File userPresetFolder();
+    static juce::Array<juce::File> userPresetFiles();
+    bool savePresetTo (const juce::File&);
+    bool loadPresetFrom (const juce::File&);
+
+    /** Nome do som em uso (de fabrica ou do usuario), para a tela mostrar. */
+    juce::String getPresetName() const;
 
     juce::AudioProcessorValueTreeState apvts;
     juce::MidiKeyboardState keyboardState;
@@ -132,7 +140,9 @@ private:
 
     std::atomic<float> *lfoRate = nullptr, *lfoWave = nullptr, *hpf = nullptr,
                        *chorusMode = nullptr, *chorusMix = nullptr, *volumeDb = nullptr;
-    std::atomic<int> currentPreset { 0 };
+    void setPresetName (const juce::String&);
+    juce::CriticalSection nameLock;
+    juce::String presetName;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DrikSynthProcessor)
 };

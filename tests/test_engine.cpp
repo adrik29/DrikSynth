@@ -165,12 +165,37 @@ int main()
         juce::MemoryBlock state;
         p.getStateInformation (state);
         q.setStateInformation (state.getData(), (int) state.getSize());
-        check (q.getCurrentPreset() == 7, "estado: preset lembrado");
+        check (q.getPresetName() == p.getPresetName() && p.getPresetName().isNotEmpty(), "estado: nome do som lembrado");
         bool same = true;
         for (auto* prm : p.getParameters())
             same = same && std::abs (prm->getValue() - q.getParameters()[prm->getParameterIndex()]->getValue()) < 1.0e-4f;
         check (same, "estado: todos os botoes iguais");
         juce::ignoreUnused (sr);
+    }
+
+    // ---- sons do usuario: salvar em arquivo e carregar de volta
+    {
+        DrikSynthProcessor p, q;
+        p.applyPreset (12);
+        setP (p, "cutoff", 777.0f); setP (p, "o2semi", 7.0f); setP (p, "chorus", 3.0f); setP (p, "mono", 1.0f);
+        setP (q, "volume", -20.0f);
+        auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("Ultravox New Europeans.drikpreset");
+        file.deleteFile();
+        check (p.savePresetTo (file) && file.existsAsFile(), "salva o som em arquivo");
+        check (p.getPresetName() == "Ultravox New Europeans", "o som salvo passa a ter o nome dado");
+        check (q.loadPresetFrom (file), "carrega o som salvo");
+        bool same = true;
+        for (auto* prm : p.getParameters())
+        {
+            const auto id = dynamic_cast<juce::RangedAudioParameter*> (prm)->getParameterID();
+            if (id != "volume" && id != "velsens")
+                same = same && std::abs (prm->getValue() - q.getParameters()[prm->getParameterIndex()]->getValue()) < 1.0e-4f;
+        }
+        check (same, "som carregado: todos os botoes iguais ao salvo");
+        check (std::abs (q.apvts.getRawParameterValue ("volume")->load() + 20.0f) < 0.01f, "carregar um som nao mexe no volume");
+        file.replaceWithText ("isto nao e um preset");
+        check (! q.loadPresetFrom (file), "arquivo invalido: recusa sem travar");
+        file.deleteFile();
     }
 
     // ---- saida mono

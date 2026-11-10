@@ -53,16 +53,20 @@ public:
 private:
     void timerCallback() override;
     void stepPreset (int delta);
+    void rebuildPresetList();
+    void choosePreset (int itemId);
+    void askNameAndSave();
 
     DrikSynthProcessor& processor;
 
     juce::Label title, versionLabel;
     juce::ComboBox presetBox;
-    juce::TextButton prevButton { "<" }, nextButton { ">" };
+    juce::TextButton prevButton { "<" }, nextButton { ">" }, saveButton { "Salvar..." };
+    juce::Array<juce::File> userFiles;
+    juce::String shownName;
     std::vector<std::vector<Section*>> rows;
     juce::OwnedArray<Section> sections;
     juce::MidiKeyboardComponent keyboard;
-    int shownPreset = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DrikSynthEditor)
 };

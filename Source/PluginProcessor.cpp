@@ -444,6 +444,11 @@ void DrikSynthProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 }
 
 //==============================================================================
+static bool presetLeavesAlone (const juce::String& id)
+{
+    return id == "volume" || id == "velsens";       // ajustes do usuario: preset nao mexe
+}
+
 void DrikSynthProcessor::applyPreset (int index)
 {
     const auto& all = drik::presets();
@@ -455,28 +460,99 @@ void DrikSynthProcessor::applyPreset (int index)
     for (auto* param : getParameters())
     {
         auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param);
-        if (ranged == nullptr)
-            continue;
-
-        const auto id = ranged->getParameterID();
-        if (id == "volume" || id == "velsens")       // ajustes do usuario: preset nao mexe
+        if (ranged == nullptr || presetLeavesAlone (ranged->getParameterID()))
             continue;
 
         float value = ranged->convertFrom0to1 (ranged->getDefaultValue());
         for (const auto& kv : preset.values)
-            if (id == kv.first)
+            if (ranged->getParameterID() == kv.first)
                 value = kv.second;
 
         ranged->setValueNotifyingHost (ranged->convertTo0to1 (value));
     }
 
-    currentPreset = index;
+    setPresetName (juce::String::fromUTF8 (preset.name));
 }
 
+//==============================================================================
+juce::File DrikSynthProcessor::userPresetFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
+               .getChildFile ("DrikSynth").getChildFile ("Presets");
+}
+
+juce::Array<juce::File> DrikSynthProcessor::userPresetFiles()
+{
+    auto files = userPresetFolder().findChildFiles (juce::File::findFiles, false, "*.drikpreset");
+    files.sort();
+    return files;
+}
+
+bool DrikSynthProcessor::savePresetTo (const juce::File& file)
+{
+    juce::XmlElement xml ("DrikSynthPreset");
+    xml.setAttribute ("version", 1);
+
+    for (auto* param : getParameters())
+    {
+        auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param);
+        if (ranged == nullptr || presetLeavesAlone (ranged->getParameterID()))
+            continue;
+
+        auto* e = xml.createNewChildElement ("PARAM");
+        e->setAttribute ("id", ranged->getParameterID());
+        e->setAttribute ("value", (double) ranged->convertFrom0to1 (ranged->getValue()));
+    }
+
+    if (! file.getParentDirectory().createDirectory() || ! xml.writeTo (file))
+        return false;
+
+    setPresetName (file.getFileNameWithoutExtension());
+    return true;
+}
+
+bool DrikSynthProcessor::loadPresetFrom (const juce::File& file)
+{
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("DrikSynthPreset"))
+        return false;
+
+    // Parametro que nao estiver no arquivo (preset salvo numa versao mais antiga) volta ao padrao.
+    for (auto* param : getParameters())
+    {
+        auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param);
+        if (ranged == nullptr || presetLeavesAlone (ranged->getParameterID()))
+            continue;
+
+        float value = ranged->convertFrom0to1 (ranged->getDefaultValue());
+        for (auto* e : xml->getChildWithTagNameIterator ("PARAM"))
+            if (e->getStringAttribute ("id") == ranged->getParameterID())
+                value = (float) e->getDoubleAttribute ("value", value);
+
+        ranged->setValueNotifyingHost (ranged->convertTo0to1 (value));
+    }
+
+    setPresetName (file.getFileNameWithoutExtension());
+    return true;
+}
+
+juce::String DrikSynthProcessor::getPresetName() const
+{
+    const juce::ScopedLock sl (nameLock);
+    return presetName;
+}
+
+void DrikSynthProcessor::setPresetName (const juce::String& name)
+{
+    const juce::ScopedLock sl (nameLock);
+    presetName = name;
+}
+
+//==============================================================================
 void DrikSynthProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     auto state = apvts.copyState();
-    state.setProperty ("preset", currentPreset.load(), nullptr);
+    state.setProperty ("presetName", getPresetName(), nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, dest);
@@ -490,7 +566,7 @@ void DrikSynthProcessor::setStateInformation (const void* data, int size)
         if (! state.isValid())
             return;
 
-        currentPreset = (int) state.getProperty ("preset", 0);
+        setPresetName (state.getProperty ("presetName").toString());
         apvts.replaceState (state);
     }
 }

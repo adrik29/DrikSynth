@@ -22,7 +22,7 @@ Em **Releases**, à direita desta página, fica sempre a última compilação:
 
 ## Os presets
 
-41 presets, agrupados pela máquina que imitam: string machines (Solina, Elka Rhapsody, Yamaha SS-30,
+42 presets, agrupados pela máquina que imitam: string machines (Solina, Elka Rhapsody, Yamaha SS-30,
 ARP Omni, Polymoog), Roland Juno e Jupiter, Oberheim, Moog, Sequential Prophet, Yamaha CS-80, ARP Odyssey,
 Roland SH-101 e outros.
 
@@ -30,9 +30,14 @@ São aproximações da arquitetura e dos patches típicos de cada instrumento, n
 Os nomes das máquinas pertencem aos seus fabricantes e aparecem só para dizer o que cada preset imita.
 A lista está em `Source/Presets.h`, num formato fácil de ler e editar.
 
+## Os teus sons
+
+O botão **Salvar...** guarda o som atual com o nome que você der. Ele passa a aparecer no alto da lista,
+em **Meus sons**. Cada som é um arquivo `.drikpreset` em `Documentos\DrikSynth\Presets`; para apagar ou
+renomear um som, apague ou renomeie o arquivo.
+
 ## O que ainda não faz
 
-- Salvar presets do usuário em arquivo (o projeto do Reaper guarda a posição de todos os botões)
 - Legato de verdade no modo mono
 - Envelope de afinação (para varrer o sync)
 - Síntese FM (DX7): é outro motor; para isso existe o Dexed

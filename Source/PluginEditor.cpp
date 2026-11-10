@@ -117,34 +117,15 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
     versionLabel.setColour (juce::Label::textColourId, dimColour);
     addAndMakeVisible (versionLabel);
 
-    // Lista de presets, agrupada por maquina imitada.
-    const auto& all = drik::presets();
-    juce::String group;
-    for (int i = 0; i < (int) all.size(); ++i)
-    {
-        if (group != all[(size_t) i].group)
-        {
-            group = all[(size_t) i].group;
-            presetBox.addSectionHeading (utf8 (all[(size_t) i].group));
-        }
-        presetBox.addItem (utf8 (all[(size_t) i].name), i + 1);
-    }
+    rebuildPresetList();
     presetBox.setColour (juce::ComboBox::backgroundColourId, panelColour);
     presetBox.setColour (juce::ComboBox::textColourId, textColour);
     presetBox.setColour (juce::ComboBox::outlineColourId, accentColour.withAlpha (0.6f));
     presetBox.setColour (juce::ComboBox::arrowColourId, accentColour);
-    presetBox.onChange = [this]
-    {
-        const int index = presetBox.getSelectedId() - 1;
-        if (index >= 0 && index != shownPreset)
-        {
-            shownPreset = index;
-            processor.applyPreset (index);
-        }
-    };
+    presetBox.onChange = [this] { choosePreset (presetBox.getSelectedId()); };
     addAndMakeVisible (presetBox);
 
-    for (auto* b : { &prevButton, &nextButton })
+    for (auto* b : { &prevButton, &nextButton, &saveButton })
     {
         b->setColour (juce::TextButton::buttonColourId, panelColour);
         b->setColour (juce::TextButton::textColourOffId, textColour);
@@ -152,6 +133,7 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
     }
     prevButton.onClick = [this] { stepPreset (-1); };
     nextButton.onClick = [this] { stepPreset (1); };
+    saveButton.onClick = [this] { askNameAndSave(); };
 
     auto& s = processor.apvts;
     auto add = [this, &s] (int row, const char* name, std::initializer_list<Section::Def> defs)
@@ -185,7 +167,6 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
     keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, accentColour.withAlpha (0.4f));
     addAndMakeVisible (keyboard);
 
-    timerCallback();
     startTimerHz (10);
     setSize (1200, 690);
 }
@@ -195,22 +176,106 @@ DrikSynthEditor::~DrikSynthEditor()
     stopTimer();
 }
 
+// Itens da lista: 1..N sao os de fabrica; de 1001 em diante, os arquivos do usuario.
+static constexpr int userIdBase = 1001;
+
+void DrikSynthEditor::rebuildPresetList()
+{
+    presetBox.clear (juce::dontSendNotification);
+
+    userFiles = DrikSynthProcessor::userPresetFiles();
+    if (! userFiles.isEmpty())
+    {
+        presetBox.addSectionHeading ("Meus sons");
+        for (int i = 0; i < userFiles.size(); ++i)
+            presetBox.addItem (userFiles[i].getFileNameWithoutExtension(), userIdBase + i);
+    }
+
+    const auto& all = drik::presets();
+    juce::String group;
+    for (int i = 0; i < (int) all.size(); ++i)
+    {
+        if (group != all[(size_t) i].group)
+        {
+            group = all[(size_t) i].group;
+            presetBox.addSectionHeading (utf8 (all[(size_t) i].group));
+        }
+        presetBox.addItem (utf8 (all[(size_t) i].name), i + 1);
+    }
+
+    shownName = {};
+    timerCallback();
+}
+
+void DrikSynthEditor::choosePreset (int itemId)
+{
+    if (itemId >= userIdBase)
+    {
+        const int i = itemId - userIdBase;
+        if (i < userFiles.size())
+            processor.loadPresetFrom (userFiles[i]);
+    }
+    else if (itemId >= 1)
+    {
+        processor.applyPreset (itemId - 1);
+    }
+
+    shownName = processor.getPresetName();
+}
+
 void DrikSynthEditor::timerCallback()
 {
-    // Mantem a lista em dia quando o preset muda por fora (projeto reaberto).
-    const int current = processor.getCurrentPreset();
-    if (current != shownPreset)
+    // Mantem a lista mostrando o som em uso, inclusive quando ele muda por fora (projeto reaberto).
+    const auto name = processor.getPresetName();
+    if (name == shownName)
+        return;
+
+    shownName = name;
+    for (int i = 0; i < presetBox.getNumItems(); ++i)
     {
-        shownPreset = current;
-        presetBox.setSelectedId (current + 1, juce::dontSendNotification);
+        if (presetBox.getItemText (i) == name)
+        {
+            presetBox.setSelectedItemIndex (i, juce::dontSendNotification);
+            return;
+        }
     }
+    presetBox.setText (name, juce::dontSendNotification);
 }
 
 void DrikSynthEditor::stepPreset (int delta)
 {
-    const int count = (int) drik::presets().size();
-    const int next = ((shownPreset < 0 ? 0 : shownPreset) + delta + count) % count;
-    presetBox.setSelectedId (next + 1, juce::sendNotificationSync);
+    const int count = presetBox.getNumItems();
+    if (count == 0)
+        return;
+
+    const int current = juce::jmax (0, presetBox.getSelectedItemIndex());
+    presetBox.setSelectedItemIndex ((current + delta + count) % count, juce::sendNotificationSync);
+}
+
+void DrikSynthEditor::askNameAndSave()
+{
+    auto* w = new juce::AlertWindow ("Salvar som", "Nome do som:", juce::MessageBoxIconType::NoIcon, this);
+    w->addTextEditor ("name", {});
+    w->addButton ("Salvar", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    w->addButton ("Cancelar", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    juce::Component::SafePointer<DrikSynthEditor> safe (this);
+    w->enterModalState (true, juce::ModalCallbackFunction::create ([safe, w] (int result)
+    {
+        if (safe == nullptr || result != 1)
+            return;
+
+        const auto name = juce::File::createLegalFileName (w->getTextEditorContents ("name").trim());
+        if (name.isEmpty())
+            return;
+
+        const auto file = DrikSynthProcessor::userPresetFolder().getChildFile (name + ".drikpreset");
+        if (safe->processor.savePresetTo (file))
+            safe->rebuildPresetList();
+        else
+            juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Salvar som",
+                                                    utf8 ("N\xc3\xa3" "o consegui gravar em:\n") + file.getFullPathName());
+    }), true);
 }
 
 void DrikSynthEditor::paint (juce::Graphics& g)
@@ -225,6 +290,8 @@ void DrikSynthEditor::resized()
     auto top = area.removeFromTop (34);
     title.setBounds (top.removeFromLeft (125));
     versionLabel.setBounds (top.removeFromLeft (170).withTrimmedTop (5));
+    saveButton.setBounds (top.removeFromRight (84).reduced (0, 3));
+    top.removeFromRight (12);
     nextButton.setBounds (top.removeFromRight (34).reduced (0, 3));
     top.removeFromRight (6);
     presetBox.setBounds (top.removeFromRight (300).reduced (0, 3));
