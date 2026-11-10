@@ -39,6 +39,37 @@ private:
     juce::OwnedArray<Cell> cells;
 };
 
+/** Teclado da tela que tambem acende as notas presas pelo botao Segurar. */
+class HoldKeyboard final : public juce::MidiKeyboardComponent
+{
+public:
+    HoldKeyboard (DrikSynthProcessor& p, juce::Colour heldColour)
+        : juce::MidiKeyboardComponent (p.keyboardState, horizontalKeyboard), processor (p), colour (heldColour) {}
+
+protected:
+    void drawWhiteNote (int note, juce::Graphics& g, juce::Rectangle<float> area, bool isDown, bool isOver,
+                        juce::Colour lineColour, juce::Colour textColour) override
+    {
+        juce::MidiKeyboardComponent::drawWhiteNote (note, g, area, isDown, isOver, lineColour, textColour);
+        if (processor.isNoteHeld (note) && ! isDown)
+        {
+            g.setColour (colour.withAlpha (0.75f));
+            g.fillRect (area.reduced (1.0f, 0.0f));
+        }
+    }
+
+    void drawBlackNote (int note, juce::Graphics& g, juce::Rectangle<float> area, bool isDown, bool isOver,
+                        juce::Colour noteFillColour) override
+    {
+        juce::MidiKeyboardComponent::drawBlackNote (note, g, area, isDown, isOver,
+                                                    processor.isNoteHeld (note) ? colour : noteFillColour);
+    }
+
+private:
+    DrikSynthProcessor& processor;
+    juce::Colour colour;
+};
+
 //==============================================================================
 class DrikSynthEditor final : public juce::AudioProcessorEditor,
                               private juce::Timer
@@ -66,7 +97,10 @@ private:
     juce::String shownName;
     std::vector<std::vector<Section*>> rows;
     juce::OwnedArray<Section> sections;
-    juce::MidiKeyboardComponent keyboard;
+    HoldKeyboard keyboard;
+    juce::ToggleButton holdButton;
+    juce::TooltipWindow tooltips { this, 600 };
+    juce::uint64 shownHeld[2] { 0, 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DrikSynthEditor)
 };

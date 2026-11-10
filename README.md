@@ -31,6 +31,12 @@ São aproximações da arquitetura e dos patches típicos de cada instrumento, n
 Os nomes das máquinas pertencem aos seus fabricantes e aparecem só para dizer o que cada preset imita.
 A lista está em `Source/Presets.h`, num formato fácil de ler e editar.
 
+## Para aprender mexendo
+
+- Pare o mouse em cima de qualquer controle: aparece uma explicação do que ele faz.
+- O botão **Segurar** prende as notas tocadas (elas ficam acesas no teclado da tela) até serem tocadas
+  de novo. Assim dá para deixar um acorde soando e girar os botões com o mouse.
+
 ## Os teus sons
 
 O botão **Salvar...** guarda o som atual com o nome que você der. Ele passa a aparecer no alto da lista,

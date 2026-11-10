@@ -121,6 +121,12 @@ public:
     /** Nome do som em uso (de fabrica ou do usuario), para a tela mostrar. */
     juce::String getPresetName() const;
 
+    /** Segurar: com isso ligado, cada nota tocada fica soando ate ser tocada de novo.
+        Serve para deixar um acorde preso e mexer nos botoes com o mouse. */
+    void setHold (bool shouldHold)          { hold = shouldHold; }
+    bool getHold() const                    { return hold.load(); }
+    bool isNoteHeld (int note) const        { return note >= 0 && note < 128 && held[note].load(); }
+
     juce::AudioProcessorValueTreeState apvts;
     juce::MidiKeyboardState keyboardState;
 
@@ -148,6 +154,12 @@ private:
     std::atomic<float> *lfoRate = nullptr, *lfoWave = nullptr, *hpf = nullptr,
                        *chorusMode = nullptr, *chorusMix = nullptr, *volumeDb = nullptr,
                        *drive = nullptr, *driveToneHz = nullptr;
+    void applyHold (juce::MidiBuffer&);
+    std::atomic<bool> hold { false };
+    std::atomic<bool> held[128];
+    bool holdWasOn = false;
+    juce::MidiBuffer holdScratch;
+
     void setPresetName (const juce::String&);
     juce::CriticalSection nameLock;
     juce::String presetName;

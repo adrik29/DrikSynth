@@ -156,6 +156,29 @@ int main()
         check (pitchOf (slide, sr, 2.0) == 81, "glide: chega na nota de destino");
     }
 
+    // ---- Segurar: a nota fica presa ate ser tocada de novo
+    {
+        const double sr = 48000.0;
+        DrikSynthProcessor p;
+        p.setPlayConfigDetails (0, 2, sr, block);
+        p.prepareToPlay (sr, block);
+        p.applyPreset (initIndex);
+        setP (p, "ar", 0.02f);
+        p.setHold (true);
+        render (p, notesOn ({ 57, 64 }, 1.0f), 0.2, sr, block);
+        auto afterOff = render (p, notesOff ({ 57, 64 }), 1.0, sr, block);
+        check (afterOff.peak > 0.02f && p.isNoteHeld (57) && p.isNoteHeld (64), "segurar: soltar a tecla nao solta a nota");
+        render (p, notesOn ({ 64 }, 1.0f), 0.5, sr, block);
+        auto one = render (p, notesOff ({ 64 }), 0.5, sr, block);
+        check (! p.isNoteHeld (64) && p.isNoteHeld (57) && pitchOf (one, sr, 0.1) == 57, "segurar: tocar de novo solta so aquela nota");
+        p.setHold (false);
+        render (p, {}, 0.5, sr, block);
+        check (render (p, {}, 0.2, sr, block).peak == 0.0f && ! p.isNoteHeld (57), "segurar: desligar solta tudo");
+        auto normal = render (p, notesOn ({ 60 }, 1.0f), 0.2, sr, block);
+        render (p, notesOff ({ 60 }), 0.5, sr, block);
+        check (normal.peak > 0.02f && render (p, {}, 0.2, sr, block).peak == 0.0f, "segurar desligado: teclado volta ao normal");
+    }
+
     // ---- estado salvo e restaurado
     {
         const double sr = 48000.0;

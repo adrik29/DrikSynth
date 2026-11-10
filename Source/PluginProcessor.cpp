@@ -338,6 +338,9 @@ DrikSynthProcessor::DrikSynthProcessor()
     driveToneHz = apvts.getRawParameterValue ("drivetone");
     oversampling = std::make_unique<juce::dsp::Oversampling<float>> (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true);
 
+    for (auto& h : held)
+        h = false;
+
     for (int i = 0; i < 16; ++i)
         synth.addVoice (new SynthVoice (shared, i));
     synth.addSound (new SynthSound());
@@ -379,6 +382,7 @@ void DrikSynthProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         return;
 
     keyboardState.processNextMidiBuffer (midi, 0, n, true);
+    applyHold (midi);
 
     for (const auto meta : midi)
     {
@@ -455,6 +459,56 @@ void DrikSynthProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     if (buffer.getNumChannels() == 1)
         for (int i = 0; i < n; ++i)
             left[i] = 0.5f * (left[i] + right[i]);
+}
+
+//==============================================================================
+void DrikSynthProcessor::applyHold (juce::MidiBuffer& midi)
+{
+    const bool on = hold.load();
+
+    if (! on && ! holdWasOn)
+        return;
+
+    holdScratch.clear();
+
+    if (! on)
+    {
+        // Desligou: solta tudo o que estava preso.
+        for (int note = 0; note < 128; ++note)
+            if (held[note].exchange (false))
+                holdScratch.addEvent (juce::MidiMessage::noteOff (1, note), 0);
+
+        holdScratch.addEvents (midi, 0, -1, 0);
+    }
+    else
+    {
+        for (const auto meta : midi)
+        {
+            const auto m = meta.getMessage();
+
+            if (m.isNoteOn())
+            {
+                const int note = m.getNoteNumber();
+                if (held[note].load())
+                {
+                    held[note] = false;                                        // tocou de novo: solta
+                    holdScratch.addEvent (juce::MidiMessage::noteOff (m.getChannel(), note), meta.samplePosition);
+                }
+                else
+                {
+                    held[note] = true;
+                    holdScratch.addEvent (m, meta.samplePosition);
+                }
+            }
+            else if (! m.isNoteOff())
+            {
+                holdScratch.addEvent (m, meta.samplePosition);                 // soltar a tecla nao solta a nota
+            }
+        }
+    }
+
+    midi.swapWith (holdScratch);
+    holdWasOn = on;
 }
 
 //==============================================================================
