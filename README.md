@@ -37,6 +37,9 @@ A lista está em `Source/Presets.h`, num formato fácil de ler e editar.
 - O botão **Segurar** prende as notas tocadas (elas ficam acesas no teclado da tela) até serem tocadas
   de novo. Assim dá para deixar um acorde soando e girar os botões com o mouse.
 
+- Sem teclado MIDI: clique no teclado da tela e toque pelo teclado do computador. `A S D F G H J K` são as
+  teclas brancas, `W E T Y U` as pretas; `Z` desce uma oitava e `X` sobe.
+
 ## Os teus sons
 
 O botão **Salvar...** guarda o som atual com o nome que você der. Ele passa a aparecer no alto da lista,

@@ -44,7 +44,33 @@ class HoldKeyboard final : public juce::MidiKeyboardComponent
 {
 public:
     HoldKeyboard (DrikSynthProcessor& p, juce::Colour heldColour)
-        : juce::MidiKeyboardComponent (p.keyboardState, horizontalKeyboard), processor (p), colour (heldColour) {}
+        : juce::MidiKeyboardComponent (p.keyboardState, horizontalKeyboard), processor (p), colour (heldColour)
+    {
+        setKeyPressBaseOctave (octave);
+    }
+
+    /** Oitava em que cai a tecla A do teclado do computador (5 = Do central, C4). */
+    int getOctave() const   { return octave; }
+    std::function<void()> onOctaveChange;
+
+    // Z desce e X sobe uma oitava no teclado do computador, como na maioria dos programas de musica.
+    bool keyPressed (const juce::KeyPress& key) override
+    {
+        const auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+        if (c == 'z' || c == 'x')
+        {
+            const int next = juce::jlimit (1, 9, octave + (c == 'x' ? 1 : -1));
+            if (next != octave)
+            {
+                processor.keyboardState.allNotesOff (1);       // nao deixa nota presa da oitava antiga
+                octave = next;
+                setKeyPressBaseOctave (octave);
+                if (onOctaveChange) onOctaveChange();
+            }
+            return true;
+        }
+        return juce::MidiKeyboardComponent::keyPressed (key);
+    }
 
 protected:
     void drawWhiteNote (int note, juce::Graphics& g, juce::Rectangle<float> area, bool isDown, bool isOver,
@@ -68,6 +94,7 @@ protected:
 private:
     DrikSynthProcessor& processor;
     juce::Colour colour;
+    int octave = 5;
 };
 
 //==============================================================================
@@ -99,6 +126,8 @@ private:
     juce::OwnedArray<Section> sections;
     HoldKeyboard keyboard;
     juce::ToggleButton holdButton;
+    juce::Label octaveLabel;
+    void showOctave();
     juce::TooltipWindow tooltips { this, 600 };
     juce::uint64 shownHeld[2] { 0, 0 };
 

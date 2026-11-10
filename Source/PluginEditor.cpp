@@ -234,6 +234,14 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
     holdButton.onClick = [this] { processor.setHold (holdButton.getToggleState()); };
     addAndMakeVisible (holdButton);
 
+    octaveLabel.setFont (juce::FontOptions (13.0f));
+    octaveLabel.setColour (juce::Label::textColourId, dimColour);
+    octaveLabel.setTooltip (utf8 ("Clique no teclado da tela e toque pelo teclado do computador: A S D F G H J K s\xc3\xa3" "o as teclas brancas, "
+                                  "W E T Y U as pretas. Z desce uma oitava e X sobe."));
+    addAndMakeVisible (octaveLabel);
+    keyboard.onOctaveChange = [this] { showOctave(); };
+    showOctave();
+
     startTimerHz (15);
     setSize (1280, 690);
 }
@@ -356,6 +364,13 @@ void DrikSynthEditor::askNameAndSave()
     }), true);
 }
 
+void DrikSynthEditor::showOctave()
+{
+    // A tecla A do computador toca o Do desta oitava (Do central = C4).
+    octaveLabel.setText (utf8 ("Teclado do PC: A = D\xc3\xb3 ") + "C" + juce::String (keyboard.getOctave() - 1) + "   (Z / X mudam a oitava)",
+                         juce::dontSendNotification);
+}
+
 void DrikSynthEditor::paint (juce::Graphics& g)
 {
     g.fillAll (bgColour);
@@ -368,7 +383,8 @@ void DrikSynthEditor::resized()
     auto top = area.removeFromTop (34);
     title.setBounds (top.removeFromLeft (125));
     versionLabel.setBounds (top.removeFromLeft (170).withTrimmedTop (5));
-    holdButton.setBounds (top.removeFromLeft (110));
+    holdButton.setBounds (top.removeFromLeft (100));
+    octaveLabel.setBounds (top.removeFromLeft (300).withTrimmedTop (4));
     saveButton.setBounds (top.removeFromRight (84).reduced (0, 3));
     top.removeFromRight (12);
     nextButton.setBounds (top.removeFromRight (34).reduced (0, 3));
