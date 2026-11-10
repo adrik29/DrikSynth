@@ -1,0 +1,15 @@
+DrikSynth - instalacao no Windows
+
+1. Copie a pasta "DrikSynth.vst3" inteira para:
+       C:\Program Files\Common Files\VST3
+   (o Windows vai pedir permissao de administrador; aceite)
+
+2. Abra o Reaper. Se o plugin nao aparecer na lista:
+       Options > Preferences > Plug-ins > VST > Re-scan
+
+3. Numa trilha, clique em FX e procure "DrikSynth" (aparece como VST3i).
+
+4. Escolha um som na lista de presets, no alto da janela, e toque.
+
+O "DrikSynth.exe" e o mesmo instrumento rodando sozinho, sem o Reaper.
+Serve para testar rapido; nao precisa instalar.
