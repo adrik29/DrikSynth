@@ -156,6 +156,7 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
 
     add (2, "ENVELOPE DO VOLUME", { { "aa", "Ataque" }, { "ad", "Decay" }, { "as", "Sustain" }, { "ar", "Release" } });
     add (2, "LFO",     { { "lfowave", "Onda" }, { "lforate", "Velocidade" }, { "lfopitch", "Vibrato" } });
+    add (2, "DRIVE",   { { "drive", "Drive" }, { "drivetone", "Tom" } });
     add (2, "CHORUS",  { { "chorus", "Tipo" }, { "chomix", "Mistura" } });
     add (2, "VOZ",     { { "glide", "Glide" }, { "mono", "Mono" } });
     add (2, "SA\xc3\x8d" "DA", { { "velsens", "Sensibilidade" }, { "volume", "Volume" } });
@@ -168,7 +169,7 @@ DrikSynthEditor::DrikSynthEditor (DrikSynthProcessor& p)
     addAndMakeVisible (keyboard);
 
     startTimerHz (10);
-    setSize (1200, 690);
+    setSize (1280, 690);
 }
 
 DrikSynthEditor::~DrikSynthEditor()

@@ -309,6 +309,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout DrikSynthProcessor::createLa
                                           Attr().withStringFromValueFunction ([] (float v, int) { return juce::String (v, 2) + " Hz"; })));
     layout.add (std::make_unique<Float>  (id ("lfopitch"), "Vibrato", skewed (0.0f, 1200.0f, 50.0f), 0.0f, cents));
 
+    // Drive
+    layout.add (std::make_unique<Float> (id ("drive"), "Drive", Range (0.0f, 1.0f, 0.0f), 0.0f, percent));
+    layout.add (std::make_unique<Float> (id ("drivetone"), "Drive Tone", skewed (800.0f, 16000.0f, 4000.0f), 8000.0f, hertz));
+
     // Chorus e saida
     layout.add (std::make_unique<Choice> (id ("chorus"), "Chorus Type", juce::StringArray { "Desligado", "Chorus I", "Chorus II", "Ensemble" }, 0));
     layout.add (std::make_unique<Float>  (id ("chomix"), "Chorus Mix", Range (0.0f, 1.0f, 0.0f), 0.5f, percent));
@@ -330,6 +334,9 @@ DrikSynthProcessor::DrikSynthProcessor()
     chorusMode = apvts.getRawParameterValue ("chorus");
     chorusMix  = apvts.getRawParameterValue ("chomix");
     volumeDb   = apvts.getRawParameterValue ("volume");
+    drive       = apvts.getRawParameterValue ("drive");
+    driveToneHz = apvts.getRawParameterValue ("drivetone");
+    oversampling = std::make_unique<juce::dsp::Oversampling<float>> (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true);
 
     for (int i = 0; i < 16; ++i)
         synth.addVoice (new SynthVoice (shared, i));
@@ -344,6 +351,11 @@ void DrikSynthProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     keyboardState.reset();
     lfoBuffer.assign ((size_t) juce::jmax (samplesPerBlock, 64) * 2, 0.0f);
     chorus.prepare (sampleRate);
+    oversampling->initProcessing ((size_t) juce::jmax (samplesPerBlock, 64));
+    oversampling->reset();
+    for (auto& f : driveTone) f.reset();
+    driveSmoothed.reset (sampleRate, 0.05);
+    driveSmoothed.setCurrentAndTargetValue (drive->load());
     hpState[0] = hpState[1] = 0.0f;
     volume.reset (sampleRate, 0.03);
     volume.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (volumeDb->load()));
@@ -418,6 +430,8 @@ void DrikSynthProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         right = scratch.data();
     }
 
+    applyDrive (left, right, n);
+
     const float hpCoef = (float) (1.0 - std::exp (-2.0 * juce::MathConstants<double>::pi * (double) hpf->load() / sr));
     if (hpf->load() > 21.0f)
     {
@@ -441,6 +455,50 @@ void DrikSynthProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     if (buffer.getNumChannels() == 1)
         for (int i = 0; i < n; ++i)
             left[i] = 0.5f * (left[i] + right[i]);
+}
+
+//==============================================================================
+void DrikSynthProcessor::applyDrive (float* left, float* right, int n)
+{
+    driveSmoothed.setTargetValue (drive->load());
+
+    if (driveSmoothed.getTargetValue() <= 0.001f && ! driveSmoothed.isSmoothing())
+    {
+        driveSmoothed.skip (n);
+        return;
+    }
+
+    const float amount = driveSmoothed.skip (n);
+
+    // Ganho de 0 a +36 dB antes do limitador; quanto mais ganho, mais o acorde "rasga",
+    // porque as notas se misturam dentro da distorcao (como num amplificador de guitarra).
+    const float gain = std::pow (10.0f, amount * 36.0f / 20.0f);
+    const float bias = 0.08f * amount;                       // assimetria: acrescenta harmonicos pares
+    const float offset = std::tanh (gain * bias);
+    const float makeup = 1.0f / (1.0f + 3.5f * amount);      // segura o volume, que sobe com a distorcao
+
+    float* channels[2] = { left, right };
+    juce::dsp::AudioBlock<float> block (channels, 2, (size_t) n);
+
+    {
+        auto up = oversampling->processSamplesUp (block);
+        for (size_t c = 0; c < 2; ++c)
+        {
+            float* d = up.getChannelPointer (c);
+            for (size_t i = 0; i < up.getNumSamples(); ++i)
+                d[i] = (std::tanh (gain * (d[i] + bias)) - offset) * makeup;
+        }
+        oversampling->processSamplesDown (block);
+    }
+
+    // Tom: passa-baixa depois da distorcao (o "alto-falante").
+    const float tone = juce::jlimit (200.0f, (float) getSampleRate() * 0.45f, driveToneHz->load());
+    for (int c = 0; c < 2; ++c)
+    {
+        driveTone[c].set (tone, 0.1f, getSampleRate());
+        for (int i = 0; i < n; ++i)
+            channels[c][i] = driveTone[c].process (channels[c][i]);
+    }
 }
 
 //==============================================================================

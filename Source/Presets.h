@@ -51,12 +51,14 @@ inline const std::vector<Preset>& presets()
         {"chorus",2},{"chomix",0.6f},{"spread",0.4f} } },
 
     // ------------------------------------------------------------------ Tirados de discos
-    // Ajustado por medida (espectro, abertura estereo e oscilacao de altura) sobre um trecho
-    // de 1,2 s de "New Europeans". E o ponto mais proximo que a medida achou, nao uma copia.
+    // Ajustado por medida sobre um trecho de 1,2 s de "New Europeans": energia por oitava,
+    // densidade do espectro, abertura estereo e oscilacao de altura (tools/ajustar_preset.py).
+    // E o ponto mais proximo que a medida achou, nao uma copia. O filtro fica quase todo aberto:
+    // e a serra crua que da o som aspero.
     { "Ultravox New Europeans (aprox.)", "Tirados de discos",
-      { {"o2wave",0},{"o2semi",12},{"mix2",0.6f},{"unison",2},{"detune",9},{"spread",0.6f},{"fmode",1},
-        {"cutoff",2000},{"reso",0.05f},{"hpf",120},{"keytrack",0.3f},{"aa",0.2f},{"as",1},{"ar",0.9f},
-        {"chorus",3},{"chomix",0.5f} } },
+      { {"o2wave",0},{"o2semi",12},{"mix2",0.5f},{"unison",2},{"detune",5},{"spread",0.6f},{"fmode",1},
+        {"cutoff",10000},{"reso",0.05f},{"hpf",200},{"keytrack",0.3f},{"aa",0.05f},{"as",1},{"ar",0.4f},
+        {"drive",0.06f},{"drivetone",14000},{"chorus",3},{"chomix",0.5f} } },
 
     // ------------------------------------------------------------------ Roland Juno
     { "Juno Pad", "Roland Juno",

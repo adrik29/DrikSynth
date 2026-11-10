@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # A versao e definida so aqui; ela aparece na janela do plugin e no Reaper.
-project(DrikSynth VERSION 0.2.0 LANGUAGES C CXX)
+project(DrikSynth VERSION 0.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,6 +45,7 @@ target_compile_definitions(DrikSynth PUBLIC
 target_link_libraries(DrikSynth
     PRIVATE
         juce::juce_audio_utils
+        juce::juce_dsp
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags)
@@ -59,5 +60,15 @@ if(DRIK_BUILD_TESTS)
         Source/PluginEditor.cpp)
     target_compile_definitions(DrikEngineTest PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
         DRIK_VERSION="${PROJECT_VERSION}")
-    target_link_libraries(DrikEngineTest PRIVATE juce::juce_audio_utils)
+    target_link_libraries(DrikEngineTest PRIVATE juce::juce_audio_utils juce::juce_dsp)
+
+    # Ferramenta de linha de comando que toca um preset e grava um WAV (usada por tools/ajustar_preset.py).
+    juce_add_console_app(DrikRender PRODUCT_NAME "DrikRender")
+    target_sources(DrikRender PRIVATE
+        tools/render.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp)
+    target_compile_definitions(DrikRender PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+        DRIK_VERSION="${PROJECT_VERSION}")
+    target_link_libraries(DrikRender PRIVATE juce::juce_audio_utils juce::juce_dsp)
 endif()

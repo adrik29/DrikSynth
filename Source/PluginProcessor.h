@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <juce_dsp/juce_dsp.h>
 #include "Dsp.h"
 
 //==============================================================================
@@ -135,11 +136,18 @@ private:
     juce::Random random;
 
     drik::Chorus chorus;
+
+    // Drive: distorcao sobre a soma das vozes (como um amplificador), com 4x de sobreamostragem.
+    void applyDrive (float* left, float* right, int n);
+    std::unique_ptr<juce::dsp::Oversampling<float>> oversampling;
+    drik::StateVariableFilter driveTone[2];
+    juce::SmoothedValue<float> driveSmoothed;
     float hpState[2] { 0.0f, 0.0f };
     juce::SmoothedValue<float> volume;
 
     std::atomic<float> *lfoRate = nullptr, *lfoWave = nullptr, *hpf = nullptr,
-                       *chorusMode = nullptr, *chorusMix = nullptr, *volumeDb = nullptr;
+                       *chorusMode = nullptr, *chorusMix = nullptr, *volumeDb = nullptr,
+                       *drive = nullptr, *driveToneHz = nullptr;
     void setPresetName (const juce::String&);
     juce::CriticalSection nameLock;
     juce::String presetName;

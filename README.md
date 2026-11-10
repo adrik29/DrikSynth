@@ -16,6 +16,7 @@ Em **Releases**, à direita desta página, fica sempre a última compilação:
 - Filtro passa-baixa de 24 dB (família Moog/Roland) ou 12 dB (família Oberheim), mais passa-alta
 - Envelopes separados para filtro e volume, com curvas exponenciais
 - LFO para vibrato, PWM e filtro; a roda de modulação acrescenta vibrato
+- Drive: distorção sobre a soma das vozes, com controle de tom
 - Chorus I e II (família Juno) e Ensemble de três linhas (string machines)
 - Modo mono com glide
 - 16 vozes
